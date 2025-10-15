@@ -1,0 +1,21 @@
+{
+  "short_name": "Psique+",
+  "name": "Psique+",
+  "description": "An integrated ecosystem for exploring human consciousness, combining psychology, philosophy, and theology with personalized tools for learning and self-reflection.",
+  "icons": [
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#020617"
+}

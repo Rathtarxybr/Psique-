@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Psique+</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e293b"/>
+    <link rel="apple-touch-icon" href="/logo192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(1rem)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.21, 1.02, 0.73, 1) forwards',
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+         /* Basic theming for react-quill to match the app's dark/light mode */
+        .ql-toolbar { border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; border: 1px solid; }
+        .ql-container { border-bottom-left-radius: 0.5rem; border-bottom-right-radius: 0.5rem; border: 1px solid; border-top: 0 !important; font-size: 1rem; line-height: 1.75; }
+        .ql-editor { min-height: 20rem; }
+        html:not(.dark) .ql-toolbar { background-color: #f8fafc; border-color: #e2e8f0; }
+        html:not(.dark) .ql-container { background-color: #ffffff; border-color: #e2e8f0; color: #1e293b; }
+        html:not(.dark) .ql-snow .ql-stroke { stroke: #475569; }
+        html:not(.dark) .ql-snow .ql-picker-label { color: #475569; }
+        html:not(.dark) .ql-snow .ql-fill { fill: #475569; }
+        .dark .ql-toolbar { background-color: #1e293b; border-color: #334155; }
+        .dark .ql-container { background-color: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .dark .ql-snow .ql-stroke { stroke: #94a3b8; }
+        .dark .ql-snow .ql-fill { fill: #94a3b8; }
+        .dark .ql-snow .ql-picker-label { color: #94a3b8; }
+        .dark .ql-snow .ql-picker-options { background-color: #334155; border-color: #475569; }
+        .dark .ql-editor.ql-blank::before { color: #64748b; }
+    </style>
+    <script>
+        // Prevents FOUC (Flash of Unstyled Content) for dark mode
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.22.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@18.2.0/",
+    "react/": "https://aistudiocdn.com/react@18.2.0/",
+    "react": "https://aistudiocdn.com/react@18.2.0",
+    "pdfjs-dist/": "https://aistudiocdn.com/pdfjs-dist@^5.4.296/",
+    "epubjs": "https://aistudiocdn.com/epubjs@^0.3.93",
+    "idb": "https://aistudiocdn.com/idb@^8.0.3",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.395.0",
+    "react-quill": "https://aistudiocdn.com/react-quill@^2.0.0",
+    "marked": "https://aistudiocdn.com/marked@^14.0.0"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+</body>
+</html>
