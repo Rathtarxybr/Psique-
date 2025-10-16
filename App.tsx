@@ -110,6 +110,7 @@ const App: React.FC = () => {
                             folders={folders}
                             setFolders={setFolders}
                             onSelectSubject={onSelectSubject}
+                            setSubjectChatHistory={setSubjectChatHistory}
                         />;
             case View.Library:
                 return <LibraryView documents={documents} setDocuments={setDocuments} collections={collections} setCollections={setCollections} setSubjects={setSubjects} setActiveView={setActiveView} />;

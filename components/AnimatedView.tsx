@@ -6,7 +6,7 @@ interface AnimatedViewProps {
 
 const AnimatedView: React.FC<AnimatedViewProps> = ({ children }) => {
   return (
-    <div className="animate-fade-in-up">
+    <div className="animate-fade-in">
       {children}
     </div>
   );

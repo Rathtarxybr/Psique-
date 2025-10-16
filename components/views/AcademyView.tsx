@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Subject, LibraryDocument, Folder, ViewMode, Topic } from '../../types.ts';
+import { Subject, LibraryDocument, Folder, ViewMode, Topic, Message } from '../../types.ts';
 import Icon from '../Icon.tsx';
 import CreateSubjectModal from '../CreateSubjectModal.tsx';
 import MoveToFolderModal from '../MoveToFolderModal.tsx';
@@ -14,13 +14,15 @@ interface AcademyViewProps {
     folders: Folder[];
     setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
     onSelectSubject: (subjectId: string) => void;
+    setSubjectChatHistory: React.Dispatch<React.SetStateAction<{ [subjectId: string]: Message[] }>>;
 }
 
-const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, documents, folders, setFolders, onSelectSubject }) => {
+const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, documents, folders, setFolders, onSelectSubject, setSubjectChatHistory }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = React.useState(false);
     const [newFolderName, setNewFolderName] = React.useState("");
     const [subjectToMove, setSubjectToMove] = React.useState<Subject | null>(null);
+    const [subjectToDelete, setSubjectToDelete] = React.useState<Subject | null>(null);
     const [searchTerm, setSearchTerm] = React.useState("");
     const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null);
     const [viewMode, setViewMode] = React.useState<ViewMode>('grid');
@@ -36,6 +38,24 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
 
     const handleMoveSubject = (subjectId: string, folderId: string | null) => {
         setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, folderId: folderId || undefined } : s));
+    };
+
+    const handleDeleteSubject = () => {
+        if (!subjectToDelete) return;
+
+        // Remove the subject
+        setSubjects(prev => prev.filter(s => s.id !== subjectToDelete.id));
+    
+        // Remove associated chat history
+        setSubjectChatHistory(prev => {
+            const newHistory = { ...prev };
+            if (subjectToDelete.id) {
+                delete newHistory[subjectToDelete.id];
+            }
+            return newHistory;
+        });
+    
+        setSubjectToDelete(null);
     };
 
     const handlePlanGenerated = async (plan: string) => {
@@ -87,9 +107,12 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
                     </span>
                 </div>
             )}
-             <div className="absolute top-3 right-3">
-                <button onClick={(e) => { e.stopPropagation(); setSubjectToMove(subject); }} className="p-2 rounded-full opacity-0 group-hover:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-purple-500">
+             <div className="absolute top-3 right-3 flex items-center space-x-1">
+                <button onClick={(e) => { e.stopPropagation(); setSubjectToMove(subject); }} className="p-2 rounded-full opacity-0 group-hover:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-purple-500" title="Mover disciplina">
                     <Icon name="move" className="w-4 h-4" />
+                </button>
+                 <button onClick={(e) => { e.stopPropagation(); setSubjectToDelete(subject); }} className="p-2 rounded-full opacity-0 group-hover:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500" title="Excluir disciplina">
+                    <Icon name="trash" className="w-4 h-4" />
                 </button>
             </div>
         </div>
@@ -211,6 +234,20 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
                 <input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3" placeholder="Nome da pasta"/>
                 <div className="mt-4 flex justify-end">
                     <button onClick={handleCreateFolder} className="bg-purple-500 text-white font-semibold py-2 px-4 rounded-lg">Criar</button>
+                </div>
+            </Modal>
+            
+            <Modal isOpen={!!subjectToDelete} onClose={() => setSubjectToDelete(null)} title="Confirmar Exclusão">
+                <p className="mt-4 text-slate-600 dark:text-slate-400">
+                    Tem certeza que deseja excluir a disciplina <strong>{subjectToDelete?.name}</strong>? Esta ação não pode ser desfeita e removerá todo o conteúdo associado.
+                </p>
+                <div className="mt-6 flex justify-end space-x-3">
+                    <button onClick={() => setSubjectToDelete(null)} className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">
+                        Cancelar
+                    </button>
+                    <button onClick={handleDeleteSubject} className="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600">
+                        Excluir
+                    </button>
                 </div>
             </Modal>
         </div>
