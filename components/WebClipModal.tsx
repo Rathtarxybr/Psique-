@@ -4,6 +4,7 @@ import Icon from './Icon.tsx';
 import Modal from './Modal.tsx';
 import { summarizeWebPage, summarizeYouTubeVideo } from '../services/geminiService.ts';
 import { saveDocumentContent } from '../utils/db.ts';
+import AIProgressBar from './AIProgressBar.tsx';
 
 interface WebClipModalProps {
     isOpen: boolean;
@@ -66,29 +67,43 @@ const WebClipModal: React.FC<WebClipModalProps> = ({ isOpen, onClose, onDocument
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title="Salvar Link da Web">
-            <div className="mt-4">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Cole o link de um artigo ou vídeo do YouTube. A IA irá extrair e resumir o conteúdo para você.</p>
-                <div className="relative">
-                    <Icon name="link" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                        type="url"
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg py-3 pl-10 pr-4"
-                    />
-                </div>
-                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-                <button onClick={handleClose} className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">
-                    Cancelar
-                </button>
-                <button onClick={handleSave} disabled={isLoading} className="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-slate-400 flex items-center space-x-2">
-                    {isLoading && <Icon name="loader" className="animate-spin w-5 h-5"/>}
-                    <span>{isLoading ? 'Analisando...' : 'Salvar'}</span>
-                </button>
-            </div>
+            {isLoading ? (
+                <AIProgressBar
+                    title="Analisando Link..."
+                    messages={[
+                        "Acessando o conteúdo da página...",
+                        "Extraindo o texto principal...",
+                        "Gerando um resumo conciso...",
+                        "Salvando em sua biblioteca...",
+                    ]}
+                    isGenerating={isLoading}
+                />
+            ) : (
+                <>
+                    <div className="mt-4">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">Cole o link de um artigo ou vídeo do YouTube. A IA irá extrair e resumir o conteúdo para você.</p>
+                        <div className="relative">
+                            <Icon name="link" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input 
+                                type="url"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                placeholder="https://..."
+                                className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg py-3 pl-10 pr-4"
+                            />
+                        </div>
+                        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button onClick={handleClose} className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">
+                            Cancelar
+                        </button>
+                        <button onClick={handleSave} disabled={isLoading} className="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-slate-400 flex items-center space-x-2">
+                            <span>Salvar</span>
+                        </button>
+                    </div>
+                </>
+            )}
         </Modal>
     );
 };

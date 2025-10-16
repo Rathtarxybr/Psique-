@@ -12,6 +12,7 @@ import LinkDocumentsModal from '../LinkDocumentsModal.tsx';
 import RichTextEditor from '../RichTextEditor.tsx';
 import { stripHtml } from '../../utils/textUtils.ts';
 import { marked } from 'marked';
+import AIProgressBar from '../AIProgressBar.tsx';
 
 
 interface SubjectDetailViewProps {
@@ -26,7 +27,7 @@ interface SubjectDetailViewProps {
 
 type StudyTab = 'notes' | 'chat' | 'flashcards' | 'quiz' | 'mind-map';
 
-const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjects, documents, onBack, setSubjects, subjectChatHistory, setSubjectChatHistory }) => {
+const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjects, onBack, setSubjects, documents, subjectChatHistory, setSubjectChatHistory }) => {
     const subject = subjects.find(s => s.id === subjectId);
     
     const [activeTab, setActiveTab] = React.useState<StudyTab>('notes');
@@ -35,6 +36,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     const [newTopicName, setNewTopicName] = React.useState("");
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [isGeneratingAll, setIsGeneratingAll] = React.useState(false);
+    const [isGenerateAllModalOpen, setIsGenerateAllModalOpen] = React.useState(false);
     const [studyContext, setStudyContext] = React.useState('');
     const [isEnhancing, setIsEnhancing] = React.useState(false);
     const [isLinkDocsModalOpen, setIsLinkDocsModalOpen] = React.useState(false);
@@ -46,6 +48,21 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
             setActiveTopicId(subject.topics[0]?.id || null);
         }
     }, [subject, activeTopicId]);
+
+    const updateSubject = React.useCallback((updatedSubject: Subject) => {
+        setSubjects(prev => prev.map(s => s.id === updatedSubject.id ? updatedSubject : s));
+    }, [setSubjects]);
+
+    // This effect ensures old flashcards without IDs get one for editing/deleting.
+    React.useEffect(() => {
+        if (subject && subject.flashcards && subject.flashcards.some(fc => !fc.id)) {
+            const migratedFlashcards = subject.flashcards.map((fc, index) => 
+                fc.id ? fc : { ...fc, id: `migrated-${subject.id}-${index}` }
+            );
+            updateSubject({ ...subject, flashcards: migratedFlashcards });
+        }
+    }, [subject, updateSubject]);
+
 
     // Pre-compile study context from topics and linked documents
     React.useEffect(() => {
@@ -75,10 +92,6 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     if (!subject) {
         return <div className="pt-12 text-center">Disciplina não encontrada. <button onClick={onBack} className="text-blue-500 underline">Voltar</button></div>;
     }
-
-    const updateSubject = (updatedSubject: Subject) => {
-        setSubjects(prev => prev.map(s => s.id === updatedSubject.id ? updatedSubject : s));
-    };
 
     const handleTopicContentChange = (topicId: string, content: string) => {
         const updatedTopics = subject.topics.map(t => t.id === topicId ? { ...t, content } : t);
@@ -123,8 +136,9 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     const handleGenerateFlashcards = async () => {
         setIsGenerating(true);
         try {
-            const newFlashcards = await generateFlashcards(studyContext);
-            updateSubject({ ...subject, flashcards: [...(subject.flashcards || []), ...newFlashcards] });
+            const newFlashcardsRaw = await generateFlashcards(studyContext);
+            const newFlashcardsWithIds = newFlashcardsRaw.map(fc => ({...fc, id: `flashcard-${Date.now()}-${Math.random()}`}));
+            updateSubject({ ...subject, flashcards: [...(subject.flashcards || []), ...newFlashcardsWithIds] });
         } finally {
             setIsGenerating(false);
         }
@@ -134,7 +148,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
         setIsGenerating(true);
         try {
             const newQuestions = await generateQuiz(studyContext);
-            updateSubject({ ...subject, quiz: [...(subject.quiz || []), ...newQuestions] });
+            updateSubject({ ...subject, quiz: newQuestions });
         } finally {
             setIsGenerating(false);
         }
@@ -151,17 +165,19 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     };
 
     const handleGenerateAll = async () => {
+        setIsGenerateAllModalOpen(true);
         setIsGeneratingAll(true);
         try {
-            const [generatedFlashcards, generatedQuiz, generatedMindMap] = await Promise.all([
+            const [generatedFlashcardsRaw, generatedQuiz, generatedMindMap] = await Promise.all([
                 generateFlashcards(studyContext),
                 generateQuiz(studyContext),
                 generateMindMap(studyContext, subject.name)
             ]);
+            const generatedFlashcards = generatedFlashcardsRaw.map(fc => ({...fc, id: `flashcard-${Date.now()}-${Math.random()}`}));
             updateSubject({
                 ...subject,
                 flashcards: [...(subject.flashcards || []), ...generatedFlashcards],
-                quiz: [...(subject.quiz || []), ...generatedQuiz],
+                quiz: generatedQuiz, // Quiz is replaced, not appended
                 mindMap: generatedMindMap // Mind map is replaced, not appended
             });
         } catch (error) {
@@ -228,7 +244,6 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     );
 
     const renderContent = () => {
-        const isAnyGenerating = isGenerating || isGeneratingAll;
         switch (activeTab) {
             case 'notes':
                 return (
@@ -314,11 +329,11 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                 const historyForChat = subjectChatHistory[subject.id];
                 return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6"><SubjectChat subjectName={subject.name} studyContext={studyContext} history={Array.isArray(historyForChat) ? historyForChat : []} setHistory={setChatHistoryForSubject} /></div>;
             case 'flashcards':
-                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><FlashcardViewer flashcards={subject.flashcards || []} onGenerate={handleGenerateFlashcards} isGenerating={isAnyGenerating} /></div>;
+                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><FlashcardViewer subject={subject} updateSubject={updateSubject} onGenerate={handleGenerateFlashcards} isGenerating={isGenerating} /></div>;
             case 'quiz':
-                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><QuizView questions={subject.quiz || []} onGenerate={handleGenerateQuiz} isGenerating={isAnyGenerating} /></div>;
+                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><QuizView questions={subject.quiz || []} onGenerate={handleGenerateQuiz} isGenerating={isGenerating} /></div>;
             case 'mind-map':
-                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><MindMapView mindMap={subject.mindMap || null} onGenerate={handleGenerateMindMap} isGenerating={isAnyGenerating} /></div>;
+                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><MindMapView mindMap={subject.mindMap || null} onGenerate={handleGenerateMindMap} isGenerating={isGenerating} /></div>;
             default: return null;
         }
     }
@@ -368,6 +383,21 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                 linkedDocumentIds={subject.documentIds}
                 onLinkDocuments={handleLinkDocuments}
             />
+            <Modal isOpen={isGenerateAllModalOpen} onClose={() => setIsGenerateAllModalOpen(false)} title="Gerando Materiais de Estudo">
+                <AIProgressBar
+                    title="Gerando tudo para você..."
+                    messages={[
+                        "Primeiro, os flashcards...",
+                        "Agora, o quiz...",
+                        "Desenhando o mapa mental...",
+                        "Quase pronto...",
+                    ]}
+                    isGenerating={isGeneratingAll}
+                    onComplete={() => {
+                        setTimeout(() => setIsGenerateAllModalOpen(false), 1200);
+                    }}
+                />
+            </Modal>
         </div>
     );
 };

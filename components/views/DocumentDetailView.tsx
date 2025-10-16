@@ -6,6 +6,8 @@ import { summarizeNotes, generateTopicsFromSummary } from '../../services/gemini
 import useDebounce from '../../hooks/useDebounce.ts';
 import RichTextEditor from '../RichTextEditor.tsx';
 import { stripHtml } from '../../utils/textUtils.ts';
+import AIProgressBar from '../AIProgressBar.tsx';
+import Modal from '../Modal.tsx';
 
 
 interface DocumentDetailViewProps {
@@ -23,6 +25,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
     const [copySuccess, setCopySuccess] = React.useState(false);
     const [currentDoc, setCurrentDoc] = React.useState(doc);
     const [isCreatingSubject, setIsCreatingSubject] = React.useState(false);
+    const [isCreateSubjectModalOpen, setIsCreateSubjectModalOpen] = React.useState(false);
     
     // State specific to 'note' type
     const [editorContent, setEditorContent] = React.useState('');
@@ -82,6 +85,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
     
     const handleCreateSubject = async () => {
         if (!currentDoc.summary) return;
+        setIsCreateSubjectModalOpen(true);
         setIsCreatingSubject(true);
         try {
             const topicNames = await generateTopicsFromSummary(currentDoc.summary, currentDoc.name);
@@ -89,13 +93,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
             const summaryTopic: Topic = {
                 id: new Date().toISOString() + '-summary-topic',
                 name: `Resumo de ${currentDoc.name}`,
-                content: `Resumo gerado por IA do documento "${currentDoc.name}":\n\n${currentDoc.summary}`,
+                content: `<p>Resumo gerado por IA do documento "${currentDoc.name}":</p><blockquote>${currentDoc.summary}</blockquote>`,
             };
 
             const generatedTopics: Topic[] = topicNames.map((name, index) => ({
                 id: `${new Date().toISOString()}-gen-topic-${index}`,
                 name: name,
-                content: `Este tópico foi gerado pela IA como uma área de estudo chave a partir do documento "${currentDoc.name}". Adicione suas anotações aqui.`
+                content: `<p>Este tópico foi gerado pela IA como uma área de estudo chave a partir do documento "${currentDoc.name}". Adicione suas anotações aqui.</p>`
             }));
 
             const newSubject: Subject = {
@@ -105,15 +109,19 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
                 documentIds: [currentDoc.id],
             };
             setSubjects(prev => [newSubject, ...prev]);
-            setActiveView(View.Academy);
+            
+            // Allow the completion animation to run
+            setIsCreatingSubject(false);
+            
+            // Navigate after modal closes
+            setTimeout(() => setActiveView(View.Academy), 1500);
 
         } catch (error) {
             console.error("Failed to create subject with generated topics:", error);
-            // Fallback to old behavior if topic generation fails
             const fallbackTopic: Topic = {
                 id: new Date().toISOString() + '-topic',
                 name: `Resumo de ${currentDoc.name}`,
-                content: `Resumo gerado por IA do documento "${currentDoc.name}":\n\n${currentDoc.summary}`,
+                content: `<p>Resumo gerado por IA do documento "${currentDoc.name}":</p><blockquote>${currentDoc.summary}</blockquote>`,
             };
             const fallbackSubject: Subject = {
                 id: new Date().toISOString(),
@@ -122,9 +130,8 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
                 documentIds: [currentDoc.id],
             };
             setSubjects(prev => [fallbackSubject, ...prev]);
-            setActiveView(View.Academy);
-        } finally {
             setIsCreatingSubject(false);
+             setTimeout(() => setActiveView(View.Academy), 1500);
         }
     }
 
@@ -145,7 +152,18 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
                 )}
             </div>
             
-            {currentDoc.summary ? (
+            { summaryLoading ? (
+                 <AIProgressBar
+                    title="Gerando Resumo..."
+                    messages={[
+                        "Lendo o documento...",
+                        "Identificando os pontos-chave...",
+                        "Estruturando as ideias principais...",
+                        "Escrevendo uma síntese concisa...",
+                    ]}
+                    isGenerating={summaryLoading}
+                />
+            ) : currentDoc.summary ? (
                  <div className="prose prose-slate dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
                     <p className="whitespace-pre-wrap">{currentDoc.summary}</p>
                  </div>
@@ -156,15 +174,15 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
                 </div>
             )}
             
-            {currentDoc.summary && (
+            {currentDoc.summary && !summaryLoading && (
                  <div className="flex justify-end items-center space-x-3 mt-4">
                     <button onClick={handleCopyToClipboard} className="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-2">
                        {copySuccess ? <Icon name="checkCircle" className="w-5 h-5 text-green-500" /> : <Icon name="copy" className="w-5 h-5" />}
                        <span>{copySuccess ? 'Copiado!' : 'Copiar'}</span>
                     </button>
-                     <button onClick={handleCreateSubject} disabled={summaryLoading || isCreatingSubject} className="text-sm font-semibold bg-green-500/10 dark:bg-green-400/10 text-green-600 dark:text-green-300 py-2 px-4 rounded-lg hover:bg-green-500/20 dark:hover:bg-green-400/20 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-wait">
-                       {isCreatingSubject ? <Icon name="loader" className="w-5 h-5 animate-spin"/> : <Icon name="plus" className="w-5 h-5" />}
-                       <span>{isCreatingSubject ? 'Criando...' : 'Criar Disciplina de Estudo'}</span>
+                     <button onClick={handleCreateSubject} disabled={isCreatingSubject} className="text-sm font-semibold bg-green-500/10 dark:bg-green-400/10 text-green-600 dark:text-green-300 py-2 px-4 rounded-lg hover:bg-green-500/20 dark:hover:bg-green-400/20 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-wait">
+                       <Icon name="plus" className="w-5 h-5" />
+                       <span>Criar Disciplina de Estudo</span>
                     </button>
                 </div>
             )}
@@ -213,6 +231,21 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ doc, onBack, se
             ) : (
                 <SummarySection />
             )}
+             <Modal isOpen={isCreateSubjectModalOpen} onClose={() => setIsCreateSubjectModalOpen(false)} title="Criando Disciplina de Estudo">
+                <AIProgressBar
+                    title="Criando sua nova disciplina..."
+                    messages={[
+                        "Analisando o resumo para extrair tópicos...",
+                        "Estruturando as seções de estudo...",
+                        "Vinculando o documento original...",
+                        "Montando a área de estudo...",
+                    ]}
+                    isGenerating={isCreatingSubject}
+                    onComplete={() => {
+                        setTimeout(() => setIsCreateSubjectModalOpen(false), 1200);
+                    }}
+                />
+            </Modal>
         </div>
     );
 };

@@ -8,7 +8,8 @@ export type IconName =
   | 'edit' | 'folderPlus' | 'check' | 'layoutGrid' | 'list' | 'move'
   | 'ellipsisVertical' | 'youtube' | 'fileUp' | 'clipboardPaste' | 'heading1'
   | 'heading2' | 'heading3' | 'bold' | 'italic' | 'underline' | 'quote'
-  | 'listOrdered' | 'mindMap' | 'link';
+  | 'listOrdered' | 'mindMap' | 'link' | 'calendar' | 'plusCircle' | 'minusCircle'
+  | 'xCircle' | 'frame';
 
 export enum View {
   Today = 'today',
@@ -57,6 +58,7 @@ export interface Topic {
 }
 
 export interface Flashcard {
+    id: string;
     front: string;
     back: string;
 }
@@ -74,7 +76,7 @@ export interface MindMapNode {
 
 export interface Subject {
   id: string;
-  name: string;
+  name:string;
   folderId?: string | null;
   topics: Topic[];
   documentIds: string[];

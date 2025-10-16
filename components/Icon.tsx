@@ -8,6 +8,11 @@ import {
   ClipboardPaste, Heading1, Heading2, Heading3, Bold, Italic, Underline, Quote, ListOrdered,
   GitMerge,
   Link,
+  Calendar,
+  PlusCircle,
+  MinusCircle,
+  XCircle,
+  Frame,
   type LucideProps
 } from 'lucide-react';
 import { IconName } from '../types.ts';
@@ -74,6 +79,11 @@ const Icon: React.FC<IconProps> = ({ name, ...props }) => {
     case 'listOrdered': return <ListOrdered {...props} />;
     case 'mindMap': return <GitMerge {...props} />;
     case 'link': return <Link {...props} />;
+    case 'calendar': return <Calendar {...props} />;
+    case 'plusCircle': return <PlusCircle {...props} />;
+    case 'minusCircle': return <MinusCircle {...props} />;
+    case 'xCircle': return <XCircle {...props} />;
+    case 'frame': return <Frame {...props} />;
     default: return null;
   }
 };

@@ -6,6 +6,7 @@ import Icon from './Icon.tsx';
 // FIX: Add .ts extension to file path.
 import { answerFromSubjects } from '../services/geminiService.ts';
 import MarkdownRenderer from './MarkdownRenderer.tsx';
+import AIProgressBar from './AIProgressBar.tsx';
 
 interface AIStudyAssistantProps {
     subjects: Subject[];
@@ -54,6 +55,7 @@ const AIStudyAssistant: React.FC<AIStudyAssistantProps> = ({ subjects }) => {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Ex: O que é o Id segundo Freud?"
                         className="w-full bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-purple-500 focus:ring-purple-500 rounded-lg py-3 pl-4 pr-12"
+                        disabled={isLoading}
                     />
                     <button
                         type="submit"
@@ -67,7 +69,20 @@ const AIStudyAssistant: React.FC<AIStudyAssistantProps> = ({ subjects }) => {
 
             {error && <p className="text-red-500 mt-4">{error}</p>}
             
-            {answer && (
+            {isLoading && (
+                 <AIProgressBar
+                    title="Buscando em suas anotações..."
+                    messages={[
+                        "Consultando suas disciplinas...",
+                        "Cruzando informações entre tópicos...",
+                        "Formulando a resposta mais completa...",
+                    ]}
+                    isGenerating={isLoading}
+                    className="mt-4"
+                />
+            )}
+            
+            {answer && !isLoading && (
                 <div className="mt-6 prose prose-slate dark:prose-invert max-w-none bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
                    <MarkdownRenderer content={answer} />
                 </div>
