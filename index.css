@@ -1,0 +1,20 @@
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+ /* Basic theming for react-quill to match the app's dark/light mode */
+.ql-toolbar { border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; border: 1px solid; }
+.ql-container { border-bottom-left-radius: 0.5rem; border-bottom-right-radius: 0.5rem; border: 1px solid; border-top: 0 !important; font-size: 1rem; line-height: 1.75; }
+.ql-editor { min-height: 20rem; }
+html:not(.dark) .ql-toolbar { background-color: #f8fafc; border-color: #e2e8f0; }
+html:not(.dark) .ql-container { background-color: #ffffff; border-color: #e2e8f0; color: #1e293b; }
+html:not(.dark) .ql-snow .ql-stroke { stroke: #475569; }
+html:not(.dark) .ql-snow .ql-picker-label { color: #475569; }
+html:not(.dark) .ql-snow .ql-fill { fill: #475569; }
+.dark .ql-toolbar { background-color: #1e293b; border-color: #334155; }
+.dark .ql-container { background-color: #1e293b; border-color: #334155; color: #cbd5e1; }
+.dark .ql-snow .ql-stroke { stroke: #94a3b8; }
+.dark .ql-snow .ql-fill { fill: #94a3b8; }
+.dark .ql-snow .ql-picker-label { color: #94a3b8; }
+.dark .ql-snow .ql-picker-options { background-color: #334155; border-color: #475569; }
+.dark .ql-editor.ql-blank::before { color: #64748b; }
