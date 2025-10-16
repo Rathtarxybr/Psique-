@@ -5,8 +5,6 @@ const urlsToCache = [
   '/main.js',
   '/index.css',
   '/manifest.json',
-  '/logo192.png',
-  '/logo512.png',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
   'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css'
