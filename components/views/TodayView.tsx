@@ -7,6 +7,7 @@ import { getDailySuggestions } from '../../services/suggestionService.ts';
 import Icon from '../Icon.tsx';
 // FIX: Add .tsx extension to file path.
 import DashboardCard from '../DashboardCard.tsx';
+import AIStudyAssistant from '../AIStudyAssistant.tsx';
 
 interface TodayViewProps {
   userName: string;
@@ -66,6 +67,10 @@ const TodayView: React.FC<TodayViewProps> = ({ userName, journalEntries, documen
         <p className="text-lg text-slate-500 dark:text-slate-400 mt-2">Pronto para mais um dia de descobertas?</p>
       </header>
       
+      <section className="mb-12">
+        <AIStudyAssistant subjects={subjects} />
+      </section>
+
       <section className="mb-12">
         <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-300 mb-4">Módulos Principais</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">

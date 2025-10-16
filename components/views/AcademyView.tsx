@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { Subject, LibraryDocument, Folder, ViewMode } from '../../types.ts';
+import { Subject, LibraryDocument, Folder, ViewMode, Topic } from '../../types.ts';
 import Icon from '../Icon.tsx';
 import CreateSubjectModal from '../CreateSubjectModal.tsx';
 import MoveToFolderModal from '../MoveToFolderModal.tsx';
 import Modal from '../Modal.tsx';
+import StudyPlanGeneratorModal from '../StudyPlanGeneratorModal.tsx';
+import { marked } from 'marked';
 
 interface AcademyViewProps {
     subjects: Subject[];
@@ -22,14 +24,7 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
     const [searchTerm, setSearchTerm] = React.useState("");
     const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null);
     const [viewMode, setViewMode] = React.useState<ViewMode>('grid');
-    const [navigateToSubjectId, setNavigateToSubjectId] = React.useState<string | null>(null);
-
-    React.useEffect(() => {
-        if (navigateToSubjectId) {
-            onSelectSubject(navigateToSubjectId);
-            setNavigateToSubjectId(null);
-        }
-    }, [navigateToSubjectId, onSelectSubject]);
+    const [newlyCreatedSubject, setNewlyCreatedSubject] = React.useState<Subject | null>(null);
 
     const handleCreateFolder = () => {
         if (!newFolderName.trim()) return;
@@ -41,6 +36,29 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
 
     const handleMoveSubject = (subjectId: string, folderId: string | null) => {
         setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, folderId: folderId || undefined } : s));
+    };
+
+    const handlePlanGenerated = async (plan: string) => {
+        if (!newlyCreatedSubject) return;
+        
+        const planHtml = await marked.parse(plan);
+        const planTopic: Topic = { id: new Date().toISOString() + '-plan', name: 'Plano de Estudos (IA)', content: planHtml };
+
+        const updatedSubject = { 
+            ...newlyCreatedSubject, 
+            topics: [...newlyCreatedSubject.topics, planTopic] 
+        };
+        
+        setSubjects(prev => prev.map(s => s.id === updatedSubject.id ? updatedSubject : s));
+        onSelectSubject(newlyCreatedSubject.id);
+        setNewlyCreatedSubject(null);
+    };
+
+    const handlePlanSkippedOrClosed = () => {
+        if (newlyCreatedSubject) {
+            onSelectSubject(newlyCreatedSubject.id);
+        }
+        setNewlyCreatedSubject(null);
     };
 
     const filteredSubjects = React.useMemo(() => {
@@ -168,8 +186,16 @@ const AcademyView: React.FC<AcademyViewProps> = ({ subjects, setSubjects, docume
                 onClose={() => setIsCreateModalOpen(false)}
                 setSubjects={setSubjects}
                 onSubjectCreated={(subject) => {
-                    setNavigateToSubjectId(subject.id);
+                    setIsCreateModalOpen(false);
+                    setNewlyCreatedSubject(subject);
                 }}
+            />
+
+            <StudyPlanGeneratorModal
+                subject={newlyCreatedSubject}
+                onPlanGenerated={handlePlanGenerated}
+                onSkip={handlePlanSkippedOrClosed}
+                onClose={handlePlanSkippedOrClosed}
             />
             
             {subjectToMove && (
