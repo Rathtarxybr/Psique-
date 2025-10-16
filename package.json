@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "mkdir -p public && cp index.html index.css manifest.json service-worker.js public/ && esbuild index.tsx --bundle --outfile=public/main.js --jsx=automatic --format=esm --external:react --external:react-dom --external:react-dom/* --external:@google/genai --external:pdfjs-dist/* --external:epubjs --external:idb --external:lucide-react --external:react-quill --external:marked"
+    "build": "mkdir -p public && cp index.html index.css manifest.json service-worker.js logo192.png logo512.png public/ && esbuild index.tsx --bundle --outfile=public/main.js --jsx=automatic --format=esm --external:react --external:react-dom --external:react-dom/* --external:@google/genai --external:pdfjs-dist/* --external:epubjs --external:idb --external:lucide-react --external:react-quill --external:marked"
   },
   "devDependencies": {
     "esbuild": "^0.21.4"

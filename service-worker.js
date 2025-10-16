@@ -2,19 +2,13 @@ const CACHE_NAME = 'psique-plus-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/index.tsx',
-  // Add other static assets you want to cache here
+  '/main.js',
+  '/index.css',
+  '/manifest.json',
+  '/logo192.png',
+  '/logo512.png',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-  'https://aistudiocdn.com/@google/genai@^1.22.0',
-  'https://aistudiocdn.com/react-dom@18.2.0/',
-  'https://aistudiocdn.com/react@18.2.0/',
-  'https://aistudiocdn.com/pdfjs-dist@^5.4.296/',
-  'https://aistudiocdn.com/epubjs@^0.3.93',
-  'https://aistudiocdn.com/idb@^8.0.3',
-  'https://aistudiocdn.com/lucide-react@^0.395.0',
-  'https://aistudiocdn.com/react-quill@^2.0.0',
-  'https://aistudiocdn.com/marked@^14.0.0',
   'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css'
 ];
 
