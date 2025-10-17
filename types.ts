@@ -110,3 +110,11 @@ export interface Suggestion {
 export type Theme = 'light' | 'dark';
 
 export type ViewMode = 'grid' | 'list';
+
+export interface SearchResultItem {
+  id: string;
+  type: 'document' | 'subject' | 'topic' | 'journal';
+  title: string;
+  snippet: string;
+  parentId?: string; // e.g., subjectId for a topic
+}

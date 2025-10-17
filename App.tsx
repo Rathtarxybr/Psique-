@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, JournalEntry, LibraryDocument, Collection, Subject, Folder, Message } from './types.ts';
+import { View, JournalEntry, LibraryDocument, Collection, Subject, Folder, Message, SearchResultItem } from './types.ts';
 import BottomNav from './components/BottomNav.tsx';
 import TodayView from './components/views/TodayView.tsx';
 import AcademyView from './components/views/AcademyView.tsx';
@@ -9,7 +9,11 @@ import AICompanionView from './components/views/AICompanionView.tsx';
 import ProfileView from './components/views/ProfileView.tsx';
 import OnboardingView from './components/views/OnboardingView.tsx';
 import SubjectDetailView from './components/views/SubjectDetailView.tsx';
+import DocumentDetailView from './components/views/DocumentDetailView.tsx';
+import JournalEditor from './components/JournalEditor.tsx';
 import AnimatedView from './components/AnimatedView.tsx';
+import GlobalSearchView from './components/views/GlobalSearchView.tsx';
+
 
 // Helper to safely parse JSON from localStorage
 const safeJSONParse = (key: string, defaultValue: any) => {
@@ -28,6 +32,7 @@ const App: React.FC = () => {
     const [userName, setUserName] = React.useState<string>(() => localStorage.getItem('userName') || 'Amigo(a)');
     const [userPhoto, setUserPhoto] = React.useState<string>(() => localStorage.getItem('userPhoto') || '');
     const [activeView, setActiveView] = React.useState<View>(View.Today);
+    const [isSearching, setIsSearching] = React.useState<boolean>(false);
 
     // App Data State
     const [journalEntries, setJournalEntries] = React.useState<JournalEntry[]>(() => safeJSONParse('journalEntries', []));
@@ -36,6 +41,11 @@ const App: React.FC = () => {
     const [subjects, setSubjects] = React.useState<Subject[]>(() => safeJSONParse('subjects', []));
     const [folders, setFolders] = React.useState<Folder[]>(() => safeJSONParse('folders', []));
     
+    // Detail View State
+    const [selectedDoc, setSelectedDoc] = React.useState<LibraryDocument | null>(null);
+    const [selectedEntry, setSelectedEntry] = React.useState<JournalEntry | null>(null);
+    const [selectedSubjectId, setSelectedSubjectId] = React.useState<string | null>(null);
+
     // Chat History State
     const [aiCompanionHistory, setAiCompanionHistory] = React.useState<Message[]>(() => {
         const data = safeJSONParse('aiCompanionHistory', []);
@@ -66,9 +76,57 @@ const App: React.FC = () => {
         setUserName(name);
         setOnboardingComplete(true);
     };
-    
-    // State for the selected subject ID to pass to the detail view
-    const [selectedSubjectId, setSelectedSubjectId] = React.useState<string | null>(null);
+
+    const handleActivateSearch = () => {
+        setIsSearching(true);
+    };
+
+    const handleCloseSearch = () => {
+        setIsSearching(false);
+    };
+
+    const handleSearchResultSelect = (item: SearchResultItem) => {
+        // Reset all selections first
+        setSelectedDoc(null);
+        setSelectedEntry(null);
+        setSelectedSubjectId(null);
+
+        switch (item.type) {
+            case 'document':
+                const doc = documents.find(d => d.id === item.id);
+                if (doc) {
+                    setSelectedDoc(doc);
+                    setActiveView(View.Library);
+                }
+                break;
+            case 'subject':
+                setSelectedSubjectId(item.id);
+                setActiveView(View.Academy);
+                break;
+            case 'topic':
+                setSelectedSubjectId(item.parentId!);
+                setActiveView(View.Academy);
+                break;
+            case 'journal':
+                const entry = journalEntries.find(e => e.id === item.id);
+                if (entry) {
+                    setSelectedEntry(entry);
+                    setActiveView(View.Sanctuary);
+                }
+                break;
+        }
+        setIsSearching(false);
+    };
+
+    const handleSaveJournalEntry = (entry: JournalEntry) => {
+        const existing = journalEntries.find(e => e.id === entry.id);
+        if (existing) {
+            setJournalEntries(journalEntries.map(e => e.id === entry.id ? entry : e));
+        } else {
+            setJournalEntries([entry, ...journalEntries]);
+        }
+        setSelectedEntry(null);
+    };
 
 
     if (!onboardingComplete) {
@@ -84,9 +142,18 @@ const App: React.FC = () => {
         setSelectedSubjectId(null);
     };
 
+    if (isSearching) {
+        return <GlobalSearchView 
+            onClose={handleCloseSearch} 
+            onResultSelect={handleSearchResultSelect}
+            documents={documents}
+            subjects={subjects}
+            journalEntries={journalEntries}
+        />;
+    }
+
 
     const renderView = () => {
-        // Special case for Academy: if a subject is selected, show its detail view
         if (activeView === View.Academy && selectedSubjectId) {
              return <SubjectDetailView 
                         subjectId={selectedSubjectId}
@@ -98,10 +165,27 @@ const App: React.FC = () => {
                         setSubjectChatHistory={setSubjectChatHistory}
                     />;
         }
+        if (activeView === View.Library && selectedDoc) {
+            return <DocumentDetailView 
+                doc={selectedDoc} 
+                onBack={() => setSelectedDoc(null)} 
+                setDocuments={setDocuments}
+                setSubjects={setSubjects}
+                setActiveView={setActiveView}
+            />;
+        }
+        if (activeView === View.Sanctuary && selectedEntry) {
+            return <JournalEditor 
+                entry={selectedEntry} 
+                onSave={handleSaveJournalEntry} 
+                onCancel={() => setSelectedEntry(null)}
+            />;
+        }
+
 
         switch (activeView) {
             case View.Today:
-                return <TodayView userName={userName} journalEntries={journalEntries} documents={documents} subjects={subjects} setActiveView={setActiveView} />;
+                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} />;
             case View.Academy:
                 return <AcademyView 
                             subjects={subjects} 
@@ -113,9 +197,9 @@ const App: React.FC = () => {
                             setSubjectChatHistory={setSubjectChatHistory}
                         />;
             case View.Library:
-                return <LibraryView documents={documents} setDocuments={setDocuments} collections={collections} setCollections={setCollections} setSubjects={setSubjects} setActiveView={setActiveView} />;
+                return <LibraryView documents={documents} setDocuments={setDocuments} collections={collections} setCollections={setCollections} setSubjects={setSubjects} setActiveView={setActiveView} setSelectedDoc={setSelectedDoc} />;
             case View.Sanctuary:
-                return <SanctuaryView entries={journalEntries} setEntries={setJournalEntries} />;
+                return <SanctuaryView entries={journalEntries} setEntries={setJournalEntries} setSelectedEntry={setSelectedEntry} />;
             case View.AICompanion:
                 return <AICompanionView 
                             userName={userName} 
@@ -129,14 +213,14 @@ const App: React.FC = () => {
             case View.Profile:
                 return <ProfileView userName={userName} setUserName={setUserName} userPhoto={userPhoto} setUserPhoto={setUserPhoto} libraryDocCount={documents.length} journalEntryCount={journalEntries.length} />;
             default:
-                return <TodayView userName={userName} journalEntries={journalEntries} documents={documents} subjects={subjects} setActiveView={setActiveView} />;
+                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} />;
         }
     };
 
     return (
         <div className="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-200">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 sm:pb-24">
-                 <AnimatedView key={activeView + (selectedSubjectId || '')}>
+                 <AnimatedView key={activeView + (selectedSubjectId || selectedDoc?.id || selectedEntry?.id || '')}>
                     {renderView()}
                 </AnimatedView>
             </main>

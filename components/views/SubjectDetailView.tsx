@@ -32,26 +32,24 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     
     const [activeTab, setActiveTab] = React.useState<StudyTab>('notes');
     const [activeTopicId, setActiveTopicId] = React.useState<string | null>(null);
-    const [topicToEdit, setTopicToEdit] = React.useState<Topic | null>(null);
-    const [newTopicName, setNewTopicName] = React.useState("");
+    const [editingTopic, setEditingTopic] = React.useState<Topic | null>(null);
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [isGeneratingAll, setIsGeneratingAll] = React.useState(false);
     const [isGenerateAllModalOpen, setIsGenerateAllModalOpen] = React.useState(false);
     const [studyContext, setStudyContext] = React.useState('');
     const [isEnhancing, setIsEnhancing] = React.useState(false);
     const [isLinkDocsModalOpen, setIsLinkDocsModalOpen] = React.useState(false);
+    const [draggedTopicId, setDraggedTopicId] = React.useState<string | null>(null);
+    const [topicMenuId, setTopicMenuId] = React.useState<string | null>(null);
+    const topicMenuRef = React.useRef<HTMLDivElement>(null);
 
 
-    // Set initial active topic
+    // Set initial active topic and handle cases where the active topic is deleted
     React.useEffect(() => {
         if (subject && (activeTopicId === null || !subject.topics.find(t => t.id === activeTopicId))) {
             setActiveTopicId(subject.topics[0]?.id || null);
         }
     }, [subject, activeTopicId]);
-
-    const updateSubject = React.useCallback((updatedSubject: Subject) => {
-        setSubjects(prev => prev.map(s => s.id === updatedSubject.id ? updatedSubject : s));
-    }, [setSubjects]);
 
     // This effect ensures old flashcards without IDs get one for editing/deleting.
     React.useEffect(() => {
@@ -59,9 +57,22 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
             const migratedFlashcards = subject.flashcards.map((fc, index) => 
                 fc.id ? fc : { ...fc, id: `migrated-${subject.id}-${index}` }
             );
-            updateSubject({ ...subject, flashcards: migratedFlashcards });
+             setSubjects(prevSubjects => prevSubjects.map(s => 
+                s.id === subjectId ? { ...s, flashcards: migratedFlashcards } : s
+            ));
         }
-    }, [subject, updateSubject]);
+    }, [subject, setSubjects, subjectId]);
+    
+    // Close topic menu on outside click
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (topicMenuRef.current && !topicMenuRef.current.contains(event.target as Node)) {
+                setTopicMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [topicMenuRef]);
 
 
     // Pre-compile study context from topics and linked documents
@@ -94,43 +105,97 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
     }
 
     const handleTopicContentChange = (topicId: string, content: string) => {
-        const updatedTopics = subject.topics.map(t => t.id === topicId ? { ...t, content } : t);
-        updateSubject({ ...subject, topics: updatedTopics });
+        setSubjects(prevSubjects => prevSubjects.map(s => {
+            if (s.id === subjectId) {
+                const updatedTopics = s.topics.map(t => 
+                    t.id === topicId ? { ...t, content } : t
+                );
+                return { ...s, topics: updatedTopics };
+            }
+            return s;
+        }));
     };
 
     const handleAddTopic = () => {
-        const newTopic: Topic = { id: new Date().toISOString(), name: 'Novo Tópico', content: '' };
-        updateSubject({ ...subject, topics: [...subject.topics, newTopic] });
+        if (subject.topics.find(t => t.id.startsWith('new-')) || editingTopic) return;
+        const newTopic: Topic = { id: `new-${Date.now()}`, name: '', content: '' };
+        setSubjects(prevSubjects => prevSubjects.map(s => 
+            s.id === subjectId ? { ...s, topics: [...s.topics, newTopic] } : s
+        ));
         setActiveTopicId(newTopic.id);
+        setEditingTopic(newTopic);
     };
     
     const handleDeleteTopic = (topicId: string) => {
-        const updatedTopics = subject.topics.filter(t => t.id !== topicId);
-        updateSubject({ ...subject, topics: updatedTopics });
-        if (activeTopicId === topicId) {
-            setActiveTopicId(updatedTopics[0]?.id || null);
-        }
+        setSubjects(prevSubjects => prevSubjects.map(s => {
+            if (s.id === subjectId) {
+                const updatedTopics = s.topics.filter(t => t.id !== topicId);
+                return { ...s, topics: updatedTopics };
+            }
+            return s;
+        }));
+        setTopicMenuId(null);
     };
     
-    const handleRenameTopic = () => {
-        if (!topicToEdit || !newTopicName.trim()) return;
-        const updatedTopics = subject.topics.map(t => t.id === topicToEdit.id ? { ...t, name: newTopicName.trim() } : t);
-        updateSubject({ ...subject, topics: updatedTopics });
-        setTopicToEdit(null);
-        setNewTopicName("");
+    const handleStartEditing = (topic: Topic) => {
+        setEditingTopic({ ...topic });
+        setTopicMenuId(null);
     };
 
-    const openRenameModal = (topic: Topic) => {
-        setTopicToEdit(topic);
-        setNewTopicName(topic.name);
+    const handleUpdateTopicName = () => {
+        if (!editingTopic) return;
+        if (!editingTopic.name.trim()) {
+            handleDeleteTopic(editingTopic.id);
+            setEditingTopic(null);
+            return;
+        }
+        setSubjects(prev => prev.map(s => {
+            if (s.id === subjectId) {
+                const isNew = editingTopic.id.startsWith('new-');
+                const finalId = isNew ? new Date().toISOString() : editingTopic.id;
+                const updatedTopics = s.topics.map(t => 
+                    t.id === editingTopic.id 
+                        ? { ...t, id: finalId, name: editingTopic.name.trim() } 
+                        : t
+                );
+                if (isNew) {
+                    setActiveTopicId(finalId);
+                }
+                return { ...s, topics: updatedTopics };
+            }
+            return s;
+        }));
+        setEditingTopic(null);
     };
+
+    // Drag and Drop Handlers
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, topicId: string) => {
+        setDraggedTopicId(topicId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', topicId);
+    };
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => e.preventDefault();
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropTargetId: string) => {
+        if (!draggedTopicId || draggedTopicId === dropTargetId) return;
+        const newTopics = [...subject.topics];
+        const draggedIndex = newTopics.findIndex(t => t.id === draggedTopicId);
+        const dropIndex = newTopics.findIndex(t => t.id === dropTargetId);
+        const [removed] = newTopics.splice(draggedIndex, 1);
+        newTopics.splice(dropIndex, 0, removed);
+        setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, topics: newTopics } : s));
+    };
+    const handleDragEnd = () => setDraggedTopicId(null);
 
     const handleLinkDocuments = (docIds: string[]) => {
-        updateSubject({ ...subject, documentIds: docIds });
+        setSubjects(prevSubjects => prevSubjects.map(s => 
+            s.id === subjectId ? { ...s, documentIds: docIds } : s
+        ));
     };
 
     const handleUnlinkDocument = (docId: string) => {
-        updateSubject({ ...subject, documentIds: subject.documentIds.filter(id => id !== docId) });
+        setSubjects(prevSubjects => prevSubjects.map(s => 
+            s.id === subjectId ? { ...s, documentIds: s.documentIds.filter(id => id !== docId) } : s
+        ));
     };
     
     const handleGenerateFlashcards = async () => {
@@ -138,7 +203,11 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
         try {
             const newFlashcardsRaw = await generateFlashcards(studyContext);
             const newFlashcardsWithIds = newFlashcardsRaw.map(fc => ({...fc, id: `flashcard-${Date.now()}-${Math.random()}`}));
-            updateSubject({ ...subject, flashcards: [...(subject.flashcards || []), ...newFlashcardsWithIds] });
+            setSubjects(prevSubjects => prevSubjects.map(s => 
+                s.id === subjectId 
+                    ? { ...s, flashcards: [...(s.flashcards || []), ...newFlashcardsWithIds] } 
+                    : s
+            ));
         } finally {
             setIsGenerating(false);
         }
@@ -148,7 +217,9 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
         setIsGenerating(true);
         try {
             const newQuestions = await generateQuiz(studyContext);
-            updateSubject({ ...subject, quiz: newQuestions });
+             setSubjects(prevSubjects => prevSubjects.map(s => 
+                s.id === subjectId ? { ...s, quiz: newQuestions } : s
+            ));
         } finally {
             setIsGenerating(false);
         }
@@ -158,7 +229,9 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
         setIsGenerating(true);
         try {
             const generatedMindMap = await generateMindMap(studyContext, subject.name);
-            updateSubject({ ...subject, mindMap: generatedMindMap });
+            setSubjects(prevSubjects => prevSubjects.map(s => 
+                s.id === subjectId ? { ...s, mindMap: generatedMindMap } : s
+            ));
         } finally {
             setIsGenerating(false);
         }
@@ -174,12 +247,17 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                 generateMindMap(studyContext, subject.name)
             ]);
             const generatedFlashcards = generatedFlashcardsRaw.map(fc => ({...fc, id: `flashcard-${Date.now()}-${Math.random()}`}));
-            updateSubject({
-                ...subject,
-                flashcards: [...(subject.flashcards || []), ...generatedFlashcards],
-                quiz: generatedQuiz, // Quiz is replaced, not appended
-                mindMap: generatedMindMap // Mind map is replaced, not appended
-            });
+            setSubjects(prevSubjects => prevSubjects.map(s => {
+                if (s.id === subjectId) {
+                    return {
+                        ...s,
+                        flashcards: [...(s.flashcards || []), ...generatedFlashcards],
+                        quiz: generatedQuiz,
+                        mindMap: generatedMindMap
+                    };
+                }
+                return s;
+            }));
         } catch (error) {
             console.error("Failed to generate all study materials:", error);
             // Optionally show an error message to the user here
@@ -234,6 +312,12 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
         }));
     };
 
+    const handleUpdateFlashcards = (flashcards: Flashcard[]) => {
+        setSubjects(prevSubjects => prevSubjects.map(s => 
+            s.id === subjectId ? { ...s, flashcards } : s
+        ));
+    };
+
     const activeTopic = subject.topics.find(t => t.id === activeTopicId);
     
     const TabButton: React.FC<{tab: StudyTab, icon: IconName, label: string}> = ({ tab, icon, label }) => (
@@ -249,29 +333,69 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mt-6">
                         <aside className="lg:col-span-1">
-                            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-4 sticky top-24">
+                            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-4 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
                                 <div className="flex justify-between items-center mb-3">
                                 <h2 className="text-lg font-semibold">Tópicos</h2>
                                 <button onClick={handleAddTopic} title="Adicionar Tópico" className="p-1.5 text-slate-500 hover:text-purple-500 rounded-full"><Icon name="plus" className="w-5 h-5"/></button>
                                 </div>
-                                <ul className="space-y-1 max-h-[35vh] overflow-y-auto">
+                                <div className="space-y-1">
                                     {subject.topics.map(topic => (
-                                        <li key={topic.id} className={`group flex justify-between items-center p-2 rounded-md cursor-pointer transition-colors ${activeTopicId === topic.id ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`} onClick={() => setActiveTopicId(topic.id)}>
-                                            <span className="truncate flex-grow">{topic.name}</span>
-                                            <div className="flex items-center flex-shrink-0 opacity-0 group-hover:opacity-100">
-                                                <button onClick={(e) => { e.stopPropagation(); openRenameModal(topic); }} className="p-1 text-slate-400 hover:text-blue-500"><Icon name="edit" className="w-4 h-4" /></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteTopic(topic.id); }} className="p-1 text-slate-400 hover:text-red-500"><Icon name="trash" className="w-4 h-4" /></button>
+                                        <div 
+                                            key={topic.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, topic.id)}
+                                            onDragEnd={handleDragEnd}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, topic.id)}
+                                            className={`group flex items-center space-x-2 p-2 rounded-md transition-all duration-200 ${activeTopicId === topic.id ? 'bg-purple-100 dark:bg-purple-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800'} ${draggedTopicId === topic.id ? 'opacity-30' : 'opacity-100'}`}
+                                        >
+                                            <Icon name="move" className="w-5 h-5 text-slate-400 flex-shrink-0 cursor-move" />
+                                            <div className="flex-grow min-w-0" onClick={() => setActiveTopicId(topic.id)}>
+                                                {editingTopic?.id === topic.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={editingTopic.name}
+                                                        onChange={(e) => setEditingTopic({ ...editingTopic, name: e.target.value })}
+                                                        onBlur={handleUpdateTopicName}
+                                                        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                                                        autoFocus
+                                                        className="w-full bg-transparent p-0 border-0 focus:ring-0 font-semibold"
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">{topic.name}</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{stripHtml(topic.content).substring(0, 50)}</p>
+                                                    </>
+                                                )}
                                             </div>
-                                        </li>
+                                            <div className="relative flex-shrink-0">
+                                                <button onClick={() => setTopicMenuId(topicMenuId === topic.id ? null : topic.id)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                                                    <Icon name="ellipsisVertical" className="w-4 h-4" />
+                                                </button>
+                                                {topicMenuId === topic.id && (
+                                                    <div ref={topicMenuRef} className="absolute right-0 z-20 mt-1 w-32 origin-top-right rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                                        <div className="py-1">
+                                                            <button onClick={() => handleStartEditing(topic)} className="group flex w-full items-center rounded-md px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
+                                                                <Icon name="edit" className="mr-2 h-4 w-4" /> Renomear
+                                                            </button>
+                                                            <button onClick={() => handleDeleteTopic(topic.id)} className="group flex w-full items-center rounded-md px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10">
+                                                                <Icon name="trash" className="mr-2 h-4 w-4" /> Excluir
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
+
 
                                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                                     <div className="flex justify-between items-center mb-3">
                                         <h2 className="text-lg font-semibold">Documentos</h2>
                                         <button onClick={() => setIsLinkDocsModalOpen(true)} title="Vincular Documentos" className="p-1.5 text-slate-500 hover:text-purple-500 rounded-full"><Icon name="plus" className="w-5 h-5"/></button>
                                     </div>
-                                    <ul className="space-y-1 max-h-[25vh] overflow-y-auto">
+                                    <ul className="space-y-1">
                                         {subject.documentIds.length > 0 ? subject.documentIds.map(docId => {
                                             const doc = documents.find(d => d.id === docId);
                                             if (!doc) return null;
@@ -311,6 +435,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                                         </button>
                                     </div>
                                     <RichTextEditor
+                                        key={activeTopic.id}
                                         value={activeTopic.content}
                                         onChange={(content) => handleTopicContentChange(activeTopic.id, content)}
                                         placeholder="Comece a escrever suas anotações aqui..."
@@ -329,7 +454,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
                 const historyForChat = subjectChatHistory[subject.id];
                 return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6"><SubjectChat subjectName={subject.name} studyContext={studyContext} history={Array.isArray(historyForChat) ? historyForChat : []} setHistory={setChatHistoryForSubject} /></div>;
             case 'flashcards':
-                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><FlashcardViewer subject={subject} updateSubject={updateSubject} onGenerate={handleGenerateFlashcards} isGenerating={isGenerating} /></div>;
+                return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><FlashcardViewer subject={subject} onUpdateFlashcards={handleUpdateFlashcards} onGenerate={handleGenerateFlashcards} isGenerating={isGenerating} /></div>;
             case 'quiz':
                 return <div className="mt-6 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-lg p-6 min-h-[50vh] flex items-center justify-center"><QuizView questions={subject.quiz || []} onGenerate={handleGenerateQuiz} isGenerating={isGenerating} /></div>;
             case 'mind-map':
@@ -370,12 +495,6 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({ subjectId, subjec
 
             {renderContent()}
             
-            <Modal isOpen={!!topicToEdit} onClose={() => setTopicToEdit(null)} title="Renomear Tópico">
-                <input type="text" value={newTopicName} onChange={e => setNewTopicName(e.target.value)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3"/>
-                <div className="mt-4 flex justify-end">
-                    <button onClick={handleRenameTopic} className="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button>
-                </div>
-            </Modal>
              <LinkDocumentsModal
                 isOpen={isLinkDocsModalOpen}
                 onClose={() => setIsLinkDocsModalOpen(false)}

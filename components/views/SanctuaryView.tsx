@@ -7,7 +7,6 @@ import Icon from '../Icon.tsx';
 // FIX: Add .tsx extension to file path.
 import Modal from '../Modal.tsx';
 // FIX: Add .tsx extension to file path.
-import JournalEditor from '../JournalEditor.tsx';
 import JournalView from './JournalView.tsx';
 import { stripHtml } from '../../utils/textUtils.ts';
 
@@ -16,6 +15,7 @@ type SanctuaryViewMode = 'list' | 'calendar';
 interface SanctuaryViewProps {
     entries: JournalEntry[];
     setEntries: React.Dispatch<React.SetStateAction<JournalEntry[]>>;
+    setSelectedEntry: (entry: JournalEntry | null) => void;
 }
 
 // FIX: Update function signature and map to use MoodValue.
@@ -24,23 +24,9 @@ const moodToEmoji = (mood: MoodValue) => {
     return map[mood];
 }
 
-const SanctuaryView: React.FC<SanctuaryViewProps> = ({ entries, setEntries }) => {
-    const [isWriting, setIsWriting] = React.useState(false);
-    const [selectedEntry, setSelectedEntry] = React.useState<JournalEntry | null>(null);
+const SanctuaryView: React.FC<SanctuaryViewProps> = ({ entries, setEntries, setSelectedEntry }) => {
     const [entryToDelete, setEntryToDelete] = React.useState<JournalEntry | null>(null);
     const [viewMode, setViewMode] = React.useState<SanctuaryViewMode>('list');
-    
-    const handleSaveEntry = (entry: JournalEntry) => {
-        // Check if it's a new entry or an update
-        const existing = entries.find(e => e.id === entry.id);
-        if (existing) {
-            setEntries(entries.map(e => e.id === entry.id ? entry : e));
-        } else {
-            setEntries([entry, ...entries]);
-        }
-        setIsWriting(false);
-        setSelectedEntry(null);
-    }
     
     const handleDelete = () => {
         if (!entryToDelete) return;
@@ -69,13 +55,15 @@ const SanctuaryView: React.FC<SanctuaryViewProps> = ({ entries, setEntries }) =>
         }
     };
 
-    if (isWriting || selectedEntry) {
-        return <JournalEditor 
-            entry={selectedEntry} 
-            onSave={handleSaveEntry} 
-            onCancel={() => { setIsWriting(false); setSelectedEntry(null); }} 
-        />
-    }
+    const handleNewEntry = () => {
+        setSelectedEntry({
+            id: new Date().toISOString(),
+            date: new Date().toISOString(),
+            mood: 'good',
+            title: '',
+            content: '',
+        });
+    };
 
     return (
         <div className="pt-12">
@@ -90,7 +78,7 @@ const SanctuaryView: React.FC<SanctuaryViewProps> = ({ entries, setEntries }) =>
                             <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow' : ''}`}><Icon name="list" className="w-5 h-5"/></button>
                             <button onClick={() => setViewMode('calendar')} className={`p-1.5 rounded-md ${viewMode === 'calendar' ? 'bg-white dark:bg-slate-700 shadow' : ''}`}><Icon name="calendar" className="w-5 h-5"/></button>
                         </div>
-                        <button onClick={() => setIsWriting(true)} className="bg-green-500 text-white font-semibold py-3 px-5 rounded-xl hover:bg-green-600 transition-colors flex items-center space-x-2">
+                        <button onClick={handleNewEntry} className="bg-green-500 text-white font-semibold py-3 px-5 rounded-xl hover:bg-green-600 transition-colors flex items-center space-x-2">
                             <Icon name="feather" className="w-5 h-5" />
                             <span className="hidden sm:inline">Nova Entrada</span>
                         </button>

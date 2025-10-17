@@ -45,9 +45,10 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onGenerate, isGenerating
     }
     
     React.useEffect(() => {
-        if (questions.length > 0) {
-            restartQuiz();
-        }
+        // Always restart the quiz when the questions prop changes.
+        // This handles generating a new quiz, clearing the quiz, and prevents
+        // stale state from a previous quiz run causing errors.
+        restartQuiz();
     }, [questions]);
 
     if (isGenerating) {
@@ -133,7 +134,10 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onGenerate, isGenerating
         }
         
         const score = userAnswers.reduce((acc, answer, index) => {
-            return answer === questions[index].correctAnswer ? acc + 1 : acc;
+            if (questions[index]) { // Safeguard against race conditions
+                return answer === questions[index].correctAnswer ? acc + 1 : acc;
+            }
+            return acc;
         }, 0);
 
         return (

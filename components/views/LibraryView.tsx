@@ -5,7 +5,6 @@ import Modal from '../Modal.tsx';
 import { findRelevantDocuments } from '../../services/geminiService.ts';
 import useDebounce from '../../hooks/useDebounce.ts';
 import { deleteDocumentContent, getDocumentContent, saveDocumentContent } from '../../utils/db.ts';
-import DocumentDetailView from './DocumentDetailView.tsx';
 import ImportModal from '../ImportModal.tsx';
 import WebClipModal from '../WebClipModal.tsx';
 
@@ -47,10 +46,10 @@ interface LibraryViewProps {
     setCollections: React.Dispatch<React.SetStateAction<Collection[]>>;
     setSubjects: React.Dispatch<React.SetStateAction<Subject[]>>;
     setActiveView: (view: View) => void;
+    setSelectedDoc: (doc: LibraryDocument | null) => void;
 }
 
-const LibraryView: React.FC<LibraryViewProps> = ({ documents, setDocuments, collections, setCollections, setSubjects, setActiveView }) => {
-    const [selectedDoc, setSelectedDoc] = React.useState<LibraryDocument | null>(null);
+const LibraryView: React.FC<LibraryViewProps> = ({ documents, setDocuments, collections, setCollections, setSubjects, setActiveView, setSelectedDoc }) => {
     const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
     const [isWebClipModalOpen, setIsWebClipModalOpen] = React.useState(false);
     const [isNewCollectionModalOpen, setIsNewCollectionModalOpen] = React.useState(false);
@@ -109,9 +108,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({ documents, setDocuments, coll
         await deleteDocumentContent(docToDelete.id);
         setDocuments(docs => docs.filter(d => d.id !== docToDelete.id));
         setDocToDelete(null);
-        if (selectedDoc && selectedDoc.id === docToDelete.id) {
-            setSelectedDoc(null);
-        }
     }
 
     const handleDeleteCollection = () => {
@@ -185,16 +181,6 @@ const LibraryView: React.FC<LibraryViewProps> = ({ documents, setDocuments, coll
         );
     }, [documents, selectedCollectionId, debouncedSearchTerm, searchMode, aiSearchResults, isAiSearching]);
 
-
-    if (selectedDoc) {
-        return <DocumentDetailView 
-            doc={selectedDoc} 
-            onBack={() => setSelectedDoc(null)} 
-            setDocuments={setDocuments}
-            setSubjects={setSubjects}
-            setActiveView={setActiveView}
-        />;
-    }
 
     return (
         <div className="pt-12">

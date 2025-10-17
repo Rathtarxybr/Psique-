@@ -11,10 +11,9 @@ import AIStudyAssistant from '../AIStudyAssistant.tsx';
 
 interface TodayViewProps {
   userName: string;
-  journalEntries: JournalEntry[];
-  documents: LibraryDocument[];
   subjects: Subject[];
   setActiveView: (view: View) => void;
+  onActivateSearch: () => void;
 }
 
 // FIX: Define a type for dashboard items to ensure item.icon is typed as IconName.
@@ -26,7 +25,7 @@ interface DashboardItem {
   colorClass: string;
 }
 
-const TodayView: React.FC<TodayViewProps> = ({ userName, journalEntries, documents, subjects, setActiveView }) => {
+const TodayView: React.FC<TodayViewProps> = ({ userName, subjects, setActiveView, onActivateSearch }) => {
   const greeting = `Olá, ${userName}`;
 
   const dashboardItems: DashboardItem[] = [
@@ -66,6 +65,21 @@ const TodayView: React.FC<TodayViewProps> = ({ userName, journalEntries, documen
         <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{greeting}</h1>
         <p className="text-lg text-slate-500 dark:text-slate-400 mt-2">Pronto para mais um dia de descobertas?</p>
       </header>
+
+      <section className="mb-8">
+        <div className="relative" onClick={onActivateSearch}>
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Icon name="search" className="h-5 w-5 text-slate-400" />
+          </div>
+          <div
+            className="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl py-4 pl-12 pr-4 text-slate-500 dark:text-slate-400 cursor-pointer hover:border-blue-400/50 transition-colors"
+            aria-label="Ativar busca global"
+            role="button"
+          >
+            Pesquisar em todo o Psique+...
+          </div>
+        </div>
+      </section>
       
       <section className="mb-12">
         <AIStudyAssistant subjects={subjects} />

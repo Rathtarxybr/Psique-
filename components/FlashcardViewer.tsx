@@ -7,12 +7,12 @@ import EditFlashcardModal from './EditFlashcardModal.tsx';
 
 interface FlashcardViewerProps {
     subject: Subject;
-    updateSubject: (updatedSubject: Subject) => void;
+    onUpdateFlashcards: (flashcards: Flashcard[]) => void;
     onGenerate: () => void;
     isGenerating: boolean;
 }
 
-const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ subject, updateSubject, onGenerate, isGenerating }) => {
+const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ subject, onUpdateFlashcards, onGenerate, isGenerating }) => {
     const flashcards = subject.flashcards || [];
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [isFlipped, setIsFlipped] = React.useState(false);
@@ -42,14 +42,14 @@ const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ subject, updateSubjec
         const updatedFlashcards = flashcards.map(card => 
             card.id === updatedCard.id ? updatedCard : card
         );
-        updateSubject({ ...subject, flashcards: updatedFlashcards });
+        onUpdateFlashcards(updatedFlashcards);
         setCardToEdit(null);
     };
 
     const handleDeleteCard = () => {
         if (!cardToDelete) return;
         const updatedFlashcards = flashcards.filter(card => card.id !== cardToDelete.id);
-        updateSubject({ ...subject, flashcards: updatedFlashcards });
+        onUpdateFlashcards(updatedFlashcards);
         setCardToDelete(null);
     };
 

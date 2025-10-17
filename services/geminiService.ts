@@ -294,7 +294,15 @@ export const generateQuiz = async (studyContext: string): Promise<QuizQuestion[]
         const jsonText = response.text.trim();
         const questions = JSON.parse(jsonText);
         if (Array.isArray(questions)) {
-            return questions.filter(q => q.options && q.options.length === 4 && q.options.includes(q.correctAnswer));
+            // Add more robust filtering to ensure data quality from the AI
+            return questions.filter(q => 
+                q &&
+                q.options &&
+                Array.isArray(q.options) &&
+                q.options.length === 4 &&
+                q.correctAnswer &&
+                q.options.includes(q.correctAnswer)
+            );
         }
         return [];
     } catch (e) {
