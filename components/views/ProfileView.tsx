@@ -13,9 +13,11 @@ interface ProfileViewProps {
   setUserPhoto: (photo: string) => void;
   libraryDocCount: number;
   journalEntryCount: number;
+  isSanctuaryEnabled: boolean;
+  setIsSanctuaryEnabled: (enabled: boolean) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ userName, setUserName, userPhoto, setUserPhoto, libraryDocCount, journalEntryCount }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ userName, setUserName, userPhoto, setUserPhoto, libraryDocCount, journalEntryCount, isSanctuaryEnabled, setIsSanctuaryEnabled }) => {
   const [nameInput, setNameInput] = React.useState(userName);
   const [isEditing, setIsEditing] = React.useState(false);
   const [saveMessage, setSaveMessage] = React.useState('');
@@ -51,16 +53,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ userName, setUserName, userPh
 
   const handleBackup = () => {
     try {
-        const dataToBackup = {
-            userName: localStorage.getItem('userName'),
-            userPhoto: localStorage.getItem('userPhoto'),
-            documents: localStorage.getItem('documents'),
-            collections: localStorage.getItem('collections'),
-            journalEntries: localStorage.getItem('journalEntries'),
-            subjects: localStorage.getItem('subjects'),
-            theme: localStorage.getItem('theme'),
-            onboardingComplete: localStorage.getItem('onboardingComplete')
-        };
+        const dataToBackup: Record<string, string | null> = {};
+        const keysToBackup = [
+          'userName', 'userPhoto', 'documents', 'collections', 
+          'journalEntries', 'subjects', 'folders', 'theme', 
+          'onboardingComplete', 'isSanctuaryEnabled', 'aiCompanionHistory', 
+          'subjectChatHistory'
+        ];
+        
+        keysToBackup.forEach(key => {
+            dataToBackup[key] = localStorage.getItem(key);
+        });
+
         const jsonString = JSON.stringify(dataToBackup, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -219,6 +223,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ userName, setUserName, userPh
                     <span className="text-gray-800 dark:text-gray-200">Aparência</span>
                 </div>
                 <ThemeToggle />
+            </li>
+             <li className="py-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                    <Icon name="heart" className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                    <span className="text-gray-800 dark:text-gray-200">Exibir Módulo Santuário</span>
+                </div>
+                <button
+                    onClick={() => setIsSanctuaryEnabled(!isSanctuaryEnabled)}
+                    className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors duration-300 ${isSanctuaryEnabled ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                    aria-label="Toggle Sanctuary Module"
+                >
+                    <span
+                        className={`absolute inline-flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${isSanctuaryEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                    ></span>
+                </button>
             </li>
             <li className="py-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">

@@ -19,6 +19,8 @@ import GlobalSearchView from './components/views/GlobalSearchView.tsx';
 const safeJSONParse = (key: string, defaultValue: any) => {
     try {
         const item = localStorage.getItem(key);
+        // Handle boolean 'false' string correctly
+        if (item === 'false') return false;
         return item ? JSON.parse(item) : defaultValue;
     } catch (e) {
         console.warn(`Error parsing localStorage key "${key}":`, e);
@@ -33,6 +35,7 @@ const App: React.FC = () => {
     const [userPhoto, setUserPhoto] = React.useState<string>(() => localStorage.getItem('userPhoto') || '');
     const [activeView, setActiveView] = React.useState<View>(View.Today);
     const [isSearching, setIsSearching] = React.useState<boolean>(false);
+    const [isSanctuaryEnabled, setIsSanctuaryEnabled] = React.useState<boolean>(() => safeJSONParse('isSanctuaryEnabled', true));
 
     // App Data State
     const [journalEntries, setJournalEntries] = React.useState<JournalEntry[]>(() => safeJSONParse('journalEntries', []));
@@ -69,6 +72,7 @@ const App: React.FC = () => {
     React.useEffect(() => { localStorage.setItem('onboardingComplete', JSON.stringify(onboardingComplete)); }, [onboardingComplete]);
     React.useEffect(() => { localStorage.setItem('aiCompanionHistory', JSON.stringify(aiCompanionHistory)); }, [aiCompanionHistory]);
     React.useEffect(() => { localStorage.setItem('subjectChatHistory', JSON.stringify(subjectChatHistory)); }, [subjectChatHistory]);
+    React.useEffect(() => { localStorage.setItem('isSanctuaryEnabled', JSON.stringify(isSanctuaryEnabled)); }, [isSanctuaryEnabled]);
 
 
 
@@ -108,10 +112,12 @@ const App: React.FC = () => {
                 setActiveView(View.Academy);
                 break;
             case 'journal':
-                const entry = journalEntries.find(e => e.id === item.id);
-                if (entry) {
-                    setSelectedEntry(entry);
-                    setActiveView(View.Sanctuary);
+                 if (isSanctuaryEnabled) {
+                    const entry = journalEntries.find(e => e.id === item.id);
+                    if (entry) {
+                        setSelectedEntry(entry);
+                        setActiveView(View.Sanctuary);
+                    }
                 }
                 break;
         }
@@ -154,6 +160,12 @@ const App: React.FC = () => {
 
 
     const renderView = () => {
+        if (activeView === View.Sanctuary && !isSanctuaryEnabled) {
+             // Fallback if sanctuary is disabled but somehow still the active view
+            setTimeout(() => setActiveView(View.Today), 0);
+            return null;
+        }
+        
         if (activeView === View.Academy && selectedSubjectId) {
              return <SubjectDetailView 
                         subjectId={selectedSubjectId}
@@ -185,7 +197,7 @@ const App: React.FC = () => {
 
         switch (activeView) {
             case View.Today:
-                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} />;
+                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} isSanctuaryEnabled={isSanctuaryEnabled} />;
             case View.Academy:
                 return <AcademyView 
                             subjects={subjects} 
@@ -199,7 +211,7 @@ const App: React.FC = () => {
             case View.Library:
                 return <LibraryView documents={documents} setDocuments={setDocuments} collections={collections} setCollections={setCollections} setSubjects={setSubjects} setActiveView={setActiveView} setSelectedDoc={setSelectedDoc} />;
             case View.Sanctuary:
-                return <SanctuaryView entries={journalEntries} setEntries={setJournalEntries} setSelectedEntry={setSelectedEntry} />;
+                return <SanctuaryView entries={journalEntries} setEntries={setJournalEntries} setSelectedEntry={setSelectedEntry} setDocuments={setDocuments} />;
             case View.AICompanion:
                 return <AICompanionView 
                             userName={userName} 
@@ -211,9 +223,9 @@ const App: React.FC = () => {
                             setMessages={setAiCompanionHistory}
                         />;
             case View.Profile:
-                return <ProfileView userName={userName} setUserName={setUserName} userPhoto={userPhoto} setUserPhoto={setUserPhoto} libraryDocCount={documents.length} journalEntryCount={journalEntries.length} />;
+                return <ProfileView userName={userName} setUserName={setUserName} userPhoto={userPhoto} setUserPhoto={setUserPhoto} libraryDocCount={documents.length} journalEntryCount={journalEntries.length} isSanctuaryEnabled={isSanctuaryEnabled} setIsSanctuaryEnabled={setIsSanctuaryEnabled} />;
             default:
-                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} />;
+                return <TodayView userName={userName} onActivateSearch={handleActivateSearch} subjects={subjects} setActiveView={setActiveView} isSanctuaryEnabled={isSanctuaryEnabled} />;
         }
     };
 
@@ -224,7 +236,7 @@ const App: React.FC = () => {
                     {renderView()}
                 </AnimatedView>
             </main>
-            <BottomNav activeView={activeView} setActiveView={setActiveView} />
+            <BottomNav activeView={activeView} setActiveView={setActiveView} isSanctuaryEnabled={isSanctuaryEnabled} />
         </div>
     );
 };

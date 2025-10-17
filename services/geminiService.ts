@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { LibraryDocument, Subject, Message, JournalEntry, Flashcard, QuizQuestion, MindMapNode } from '../types.ts';
+import { stripHtml } from '../utils/textUtils.ts';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
@@ -455,4 +456,27 @@ export const generateTopicsFromSummary = async (summary: string, title: string):
         console.error("Failed to parse topics from summary", e);
         return [];
     }
+};
+
+export const generateJournalReflection = async (entries: JournalEntry[]): Promise<string> => {
+    const prompt = `Você é um psicólogo compassivo e perspicaz chamado Psique. Seu objetivo é ajudar o usuário a refletir sobre suas anotações no diário da última semana.
+    Analise as seguintes entradas do diário. NÃO forneça conselhos médicos ou diagnósticos. Mantenha um tom de apoio e encorajamento.
+    Responda em Português e use o formato markdown.
+
+    Sua análise deve incluir:
+    1.  **Temas Recorrentes:** Identifique 2-3 temas ou assuntos principais que apareceram nas anotações.
+    2.  **Padrões de Humor:** Comente sobre quaisquer padrões ou mudanças no humor registrado.
+    3.  **Sugestão para Reflexão:** Termine com uma única pergunta gentil e aberta para encorajar uma reflexão mais profunda, baseada na sua análise.
+
+    Entradas do Diário:
+    ---
+    ${entries.map(e => `Data: ${new Date(e.date).toLocaleDateString('pt-BR')}\nHumor: ${e.mood}\nTítulo: ${e.title}\nConteúdo: ${stripHtml(e.content).substring(0, 500)}...\n`).join('\n---\n')}
+    ---
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+    return response.text;
 };

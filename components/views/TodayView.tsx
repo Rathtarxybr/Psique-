@@ -14,6 +14,7 @@ interface TodayViewProps {
   subjects: Subject[];
   setActiveView: (view: View) => void;
   onActivateSearch: () => void;
+  isSanctuaryEnabled: boolean;
 }
 
 // FIX: Define a type for dashboard items to ensure item.icon is typed as IconName.
@@ -25,10 +26,10 @@ interface DashboardItem {
   colorClass: string;
 }
 
-const TodayView: React.FC<TodayViewProps> = ({ userName, subjects, setActiveView, onActivateSearch }) => {
+const TodayView: React.FC<TodayViewProps> = ({ userName, subjects, setActiveView, onActivateSearch, isSanctuaryEnabled }) => {
   const greeting = `Olá, ${userName}`;
 
-  const dashboardItems: DashboardItem[] = [
+  const dashboardItems: DashboardItem[] = React.useMemo(() => [
     {
       icon: 'breathing',
       title: 'Santuário',
@@ -57,7 +58,7 @@ const TodayView: React.FC<TodayViewProps> = ({ userName, subjects, setActiveView
       module: View.AICompanion,
       colorClass: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/50',
     },
-  ];
+  ].filter(item => isSanctuaryEnabled || item.module !== View.Sanctuary), [isSanctuaryEnabled]);
 
   return (
     <div className="pt-12 animate-fadeIn">
